@@ -1,9 +1,7 @@
 //Requiring all the packages used in this application.
 var inquirer = require("inquirer");
 var mysql = require("mysql");
-var table = require("table");
-
-import {table} from '/node_modules/table';
+var table = require("cli-table");
 
 //Defining all the necessary variables to establish connection with the database
 var db = mysql.createConnection({
@@ -28,14 +26,136 @@ db.connect(err => {
   showProducts();
 });
 
-function showProducts()
-{
-  data=["Product Name", "Price","Quantity"];
-  db.query("SELECT * FROM products",function(err,allItems){
-    if(err) throw err;
-    allItems.forEach(item => {
-    data.push([item.product_name,item.price,item.stock_quantity]);    
-    });
-    console.log(table(data));
+function showProducts() {
+  var data_to_customer = [];
+  var display_table = new table({
+    head: ["Product Name", "Price", "Quantity"],
+    colWidths: [35, 10, 10]
   });
+
+  db.query("SELECT * FROM products", function (err, allItems) {
+    if (err) throw err;
+    allItems.forEach(item => {
+      display_table.push([item.product_name, "$" + parseFloat(item.price).toFixed(2), item.stock_quantity]);
+      //data_to_customer.push(item.item_id + "." + item.product_name + "-" + item.stock_quantity);
+      data_to_customer.push({
+        //itemID : item.item_id,
+        name : item.product_name,
+        value : item.item_id + "-" + item.stock_quantity + "-" + item.price,
+        short : item.item_id +"."+ item.product_name
+      });
+    });
+    console.log(display_table.toString());
+    //console.log(data_to_customer);
+    askCustomerToBuy(data_to_customer);
+  });
+}
+
+function askCustomerToBuy(products)
+{
+  var choices  = []; 
+  inquirer.prompt([
+    {
+      type : "list",
+      name : "option",
+      message : "Would you like to purchase any of the items below?",    
+     // choices: products.map(choice=>{return choice.display;})  
+     choices:products                    
+    } ,
+    {
+      type : "input",
+      name : "quantity",
+      message : "How many would you like to buy?",
+      validate : function(value) {
+        var pass = value.match(/^[0-9]/);
+        if (pass) {return true;}
+        return 'Please enter a valid amount';
+    }
+  }  
+  ]).then(function(answers)
+  {
+    var itemID = answers.option.split("-")[0];
+    var itemQuantity = parseInt(answers.option.split("-")[1]);
+    var itemPrice = answers.option.split("-")[2];
+
+    //console.log(answers);
+    if(itemQuantity < parseInt(answers.quantity))
+    {
+      console.log("from database  " + itemQuantity);
+      console.log("iam asking for " + answers.quantity); 
+      console.log("There is not enough quantity to fulfil your order");
+      askCustomerToBuy(products);
+    }
+    else
+    {
+      var updatedQuantity = parseInt(itemQuantity) - parseInt(answers.quantity);
+      var updated = updateQuantity(itemID,updatedQuantity);
+      if(updated)
+      {
+        
+        var totalcost = parseFloat(itemPrice) * parseInt(answers.quantity);
+        var display_table = new table({
+          head: ["Total Cost :  " + " $"+ totalcost  ],
+          colWidths: [50]
+        });
+        console.log(display_table.toString());
+        checktoContinue();
+      }
+
+    }
+  });
+}
+
+function updateQuantity(itemID,itemQuantity)
+{
+  db.query("UPDATE products SET stock_quantity = ? WHERE item_id = ?", [itemQuantity, itemID],function(err,userResp){
+    if(err) return false;
+  });
+
+  //console.log("Updating quantities...\n");
+  var query = db.query(
+    "UPDATE products SET ? WHERE ?",
+    [
+      {
+        stock_quantity: itemQuantity
+      },
+      {
+        item_id: itemID
+      }
+    ],
+    function(err, res) {
+      //console.log(res.affectedRows + " products updated!\n");
+           
+    }
+  );
+
+  // logs the actual query being run
+  //console.log(query.sql);
+  return true;
+
+
+
+}
+
+function checktoContinue()
+{
+  inquirer.prompt([
+    {
+      type : "list",
+      name : "option",
+      message : "Would you like to continue to shop?",     
+     choices: ["Yes", "No"]                    
+    }     
+  ]).then(function(answers)
+  {
+    //console.log(answers);
+    if(answers.option == "Yes")
+    {
+      showProducts();
+    }
+    else
+    {
+      process.exit();
+    }
+});
 }

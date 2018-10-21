@@ -26,6 +26,7 @@ db.connect(err => {
   showProducts();
 });
 
+//This function will show the products available on page load. 
 function showProducts() {
   var data_to_customer = [];
   var display_table = new table({
@@ -51,6 +52,7 @@ function showProducts() {
   });
 }
 
+//This function will ask the customer to if they want to buy any product and if so how much 
 function askCustomerToBuy(products)
 {
   var choices  = []; 
@@ -89,7 +91,8 @@ function askCustomerToBuy(products)
     else
     {
       var updatedQuantity = parseInt(itemQuantity) - parseInt(answers.quantity);
-      var updated = updateQuantity(itemID,updatedQuantity);
+      var sales = parseInt(answers.quantity) * parseFloat(itemPrice);
+      var updated = updateQuantity(itemID,updatedQuantity,sales);
       if(updated)
       {
         
@@ -106,7 +109,8 @@ function askCustomerToBuy(products)
   });
 }
 
-function updateQuantity(itemID,itemQuantity)
+//Once the customer decides to get a product and quantity update the quantitiy in the database
+function updateQuantity(itemID,itemQuantity,sales)
 {
   db.query("UPDATE products SET stock_quantity = ? WHERE item_id = ?", [itemQuantity, itemID],function(err,userResp){
     if(err) return false;
@@ -117,7 +121,8 @@ function updateQuantity(itemID,itemQuantity)
     "UPDATE products SET ? WHERE ?",
     [
       {
-        stock_quantity: itemQuantity
+        stock_quantity: itemQuantity,
+        product_sales : sales.toFixed(2)
       },
       {
         item_id: itemID
@@ -137,6 +142,7 @@ function updateQuantity(itemID,itemQuantity)
 
 }
 
+//After all the questions ask them if they want to continue, if so repeat the whole process else exit from the app.
 function checktoContinue()
 {
   inquirer.prompt([

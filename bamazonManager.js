@@ -89,6 +89,10 @@ function showLowInventory() {
     allItems.forEach(item => {
       display_table.push([item.product_name, "$" + parseFloat(item.price).toFixed(2), item.stock_quantity]);
     });
+    if(allItems.length == 0)
+    {
+      display_table.push(["No products with low inventory","",""]);
+    }
     console.log(display_table.toString());
     showOptions();
   });
@@ -106,6 +110,8 @@ function addtoInventory() {
         short: item.item_id + "." + item.product_name
       });
     });
+    if(allItems.length > 0)
+    {
     inquirer.prompt([{
         type: "list",
         name: "option",
@@ -134,7 +140,12 @@ function addtoInventory() {
         showOptions();
       }
     });
-
+     }
+     else
+     {
+       console.log("There are no items with low inventory");
+       showOptions();
+     }
   });
 
 }
